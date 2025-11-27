@@ -7,75 +7,75 @@ PC installed with SCILAB.
 
 ### PROGRAM : 
 ```
-//  SPEECH RECOGNITION USING SCILAB
-clc;
-clear;
-close;
+# 🎤 Speech-to-Text Colab demo: Whisper + SpeechRecognition fallback
+# ---------------------------------------------------------------
 
-disp("Loading audio files...");
+# 1) Install dependencies for Whisper
+!pip install -q openai-whisper pydub
+!apt -qq install -y ffmpeg
 
-// Read reference and test voice files
-[y1, fs1] = wavread("C:\Users\acer\Downloads\referrence.wav");
-[y2, fs2] = wavread("C:\Users\acer\Downloads\test.wav");
+import os
+from google.colab import files
 
-// Check sampling rates
-if fs1 <> fs2 then
-    error("Sampling rates must match!");
-end
+print("👉 Upload your audio file (wav / mp3 / m4a / etc):")
+uploaded = files.upload()
+file_path = list(uploaded.keys())[0]
+print("Uploaded file:", file_path)
 
-// Convert stereo to mono (if needed)
-if size(y1,2) == 2 then
-    y1 = mean(y1, 2);
-end
-if size(y2,2) == 2 then
-    y2 = mean(y2, 2);
-end
 
-// Make both signals same length
-n = min(length(y1), length(y2));
-y1 = y1(1:n);
-y2 = y2(1:n);
+# Optionally, convert to WAV for consistency (e.g. if mp3 / m4a)
+from pydub import AudioSegment
 
-// Compute Euclidean distance
-dist = sqrt(sum((y1 - y2).^2));
+ext = file_path.split('.')[-1].lower()
+if ext not in ["wav", "WAV"]:
+    try:
+        audio = AudioSegment.from_file(file_path)
+        file_path = "converted.wav"
+        audio.export(file_path, format="wav")
+        print("Converted to WAV as", file_path)
+    except Exception as e:
+        print("Could not convert to WAV, will try original file. Error:", e)
 
-disp("Euclidean distance (reference vs test): " + string(dist));
+# 2) Use Whisper to transcribe
+import whisper
 
-// Decision based on threshold
-if dist < 0.5 then
-    disp("Matching with reference (same word)");
-else
-    disp("Not matching with reference (different word)");
-end
+print("Loading Whisper model...")
+model = whisper.load_model("base")  # you can choose "tiny", "small", "base", "medium", "large"
+print("Model loaded. Transcribing...")
+result = model.transcribe(file_path)
+text = result["text"]
+print("✅ Whisper transcription:")
+print(text)
 
-// Plot both signals
-figure(0);
-subplot(2,1,1);
-plot(y1);
-title("REFERENCE VOICE SIGNAL");
-xlabel("Samples");
-ylabel("Amplitude");
+# (Optional) Save transcription to file
+with open("transcription.txt", "w", encoding="utf-8") as f:
+    f.write(text)
+print("Saved transcription to transcription.txt")
 
-subplot(2,1,2);
-plot(y2);
-title("TEST VOICE SIGNAL");
-xlabel("Samples");
-ylabel("Amplitude");
 
-// Comparison plot
-figure(1);
-plot(y1, 'b');
-plot(y2, 'r');
-title("Original (Blue) vs Test (Red) Signal");
-xlabel("Samples");
-ylabel("Amplitude");
-legend(["Reference", "Test"]);
+# 3) Fallback / alternative (for short/simple English audio): SpeechRecognition + Google API
+print("\n--- Fallback: SpeechRecognition method ---")
+!pip install -q SpeechRecognition pydub
 
-disp("Waveforms plotted successfully. Close the graph window manually to finish.");
+import speech_recognition as sr
+
+r = sr.Recognizer()
+try:
+    with sr.AudioFile(file_path) as source:
+        audio_data = r.record(source)
+    print("Recognizing with Google Web Speech API …")
+    text2 = r.recognize_google(audio_data)
+    print("✅ SpeechRecognition result:")
+    print(text2)
+except Exception as e:
+    print("SpeechRecognition failed:", e)
+
 
 ```
 
 ### OUTPUT: 
-<img width="905" height="577" alt="image" src="https://github.com/user-attachments/assets/8acffbfe-f052-4029-a209-6fe57e8f29b4" />
-<img width="760" height="600" alt="image" src="https://github.com/user-attachments/assets/f43f8351-e268-4bf4-803c-255111bf5cff" />
-<img width="762" height="600" alt="image" src="https://github.com/user-attachments/assets/a1981565-0b3f-4f53-a8d3-0271e15f25c1" />
+<img width="886" height="455" alt="Screenshot 2025-11-27 183229" src="https://github.com/user-attachments/assets/ade96fa0-1526-47d6-9c19-63ec3f748db4" />
+
+### Result:
+Thus the speech recognition using COLAB was performed and verified.
+
